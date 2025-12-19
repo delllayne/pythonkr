@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import get_db
-from app.models import User
+from .database import get_db
+from .models import User
 import os
 from dotenv import load_dotenv
 
@@ -30,8 +30,9 @@ def get_password_hash(password: str) -> str:
     password = password_bytes.decode('utf-8', errors='ignore')
     return pwd_context.hash(password)
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict, is_admin: bool = False) -> str:
     to_encode = data.copy()
+    to_encode.update({"is_admin": is_admin})
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -62,3 +63,14 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+async def get_current_admin(
+    current_user = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Требуется роль администратора"
+        )
+    return current_user

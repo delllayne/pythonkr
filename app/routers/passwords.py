@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import SessionLocal
-from app.models import PasswordEntry
-from app.schemas import PasswordCreate, PasswordOut, PasswordUpdate
-from app.auth import get_current_user
+from ..database import get_db
+from ..models import PasswordEntry
+from ..schemas import PasswordCreate, PasswordOut, PasswordUpdate
+from ..auth import get_current_user
 from cryptography.fernet import Fernet
-from app.database import get_db
 import os
 from dotenv import load_dotenv
 
@@ -18,43 +17,53 @@ router = APIRouter(prefix="/passwords", tags=["passwords"], dependencies=[Depend
 def encrypt_password(password: str) -> str:
     return fernet.encrypt(password.encode()).decode()
 
-def decrypt_password(encrypted: str) -> str:
-    return fernet.decrypt(encrypted.encode()).decode()
-
 @router.post("/", response_model=PasswordOut, summary="Создать новую запись с паролем")
 async def create_password(
     password_data: PasswordCreate,
     current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(SessionLocal)
+    db: AsyncSession = Depends(get_db)
 ):
     encrypted = encrypt_password(password_data.password)
     db_password = PasswordEntry(
         service=password_data.service,
         username=password_data.username,
         encrypted_password=encrypted,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        password = password.decrypt_password()
     )
     db.add(db_password)
     await db.commit()
     await db.refresh(db_password)
     return db_password
 
+
 @router.get("/", response_model=list[PasswordOut], summary="Получить все записи пользователя")
 async def get_passwords(
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+        current_user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
 ):
     from sqlalchemy import select
     result = await db.execute(
         select(PasswordEntry).where(PasswordEntry.owner_id == current_user.id)
     )
-    return result.scalars().all()
+    passwords = result.scalars().all()
+
+    return [
+        PasswordOut(
+            id=p.id,
+            service=p.service,
+            username=p.username,
+            password=p.decrypt_password()
+        )
+        for p in passwords
+    ]
+
 
 @router.get("/{password_id}", response_model=PasswordOut, summary="Получить запись по ID")
 async def get_password(
-    password_id: int,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+        password_id: int,
+        current_user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
 ):
     from sqlalchemy import select
     result = await db.execute(
@@ -66,7 +75,13 @@ async def get_password(
     password = result.scalar_one_or_none()
     if not password:
         raise HTTPException(status_code=404, detail="Password not found")
-    return password
+
+    return PasswordOut(
+        id=password.id,
+        service=password.service,
+        username=password.username,
+        password=password.decrypt_password()
+    )
 
 @router.put("/{password_id}", response_model=PasswordOut, summary="Обновить запись")
 async def update_password(

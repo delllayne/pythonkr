@@ -8,14 +8,18 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
-
+    is_admin: bool
     class Config:
         from_attributes = True
+
+class UserAdminCreate(BaseModel):
+    username: str
+    password: str
 
 class PasswordCreate(BaseModel):
     service: str
     username: str
-    password: str  # plaintext (будет зашифрован)
+    password: str
 
 class PasswordUpdate(BaseModel):
     service: Optional[str] = None
@@ -26,6 +30,6 @@ class PasswordOut(BaseModel):
     id: int
     service: str
     username: str
-
+    password: str
     class Config:
         from_attributes = True
