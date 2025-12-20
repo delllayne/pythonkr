@@ -1,4 +1,11 @@
-# app/routers/admin.py
+# renderfix
+import sys
+if sys.version_info >= (3, 13):
+    import typing
+    # Фикс для SQLAlchemy в Python 3.13
+    if not hasattr(typing, 'TypingOnly'):
+        class TypingOnly: pass
+        typing.TypingOnly = TypingOnly
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db

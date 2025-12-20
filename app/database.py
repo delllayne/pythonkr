@@ -1,3 +1,11 @@
+# renderfix
+import sys
+if sys.version_info >= (3, 13):
+    import typing
+    # Фикс для SQLAlchemy в Python 3.13
+    if not hasattr(typing, 'TypingOnly'):
+        class TypingOnly: pass
+        typing.TypingOnly = TypingOnly
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool

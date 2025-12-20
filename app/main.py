@@ -1,3 +1,11 @@
+# renderfix
+import sys
+if sys.version_info >= (3, 13):
+    import typing
+    # Фикс для SQLAlchemy в Python 3.13
+    if not hasattr(typing, 'TypingOnly'):
+        class TypingOnly: pass
+        typing.TypingOnly = TypingOnly
 from fastapi import FastAPI
 from starlette.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
