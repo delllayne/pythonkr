@@ -1,11 +1,3 @@
-# renderfix
-import sys
-if sys.version_info >= (3, 13):
-    import typing
-    # Фикс для SQLAlchemy в Python 3.13
-    if not hasattr(typing, 'TypingOnly'):
-        class TypingOnly: pass
-        typing.TypingOnly = TypingOnly
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
